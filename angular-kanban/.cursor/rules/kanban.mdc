@@ -1,0 +1,111 @@
+# Angular Kanban Board - Project Rules
+
+## Code Style and Conventions
+
+### Angular Components
+- Use standalone components (Angular 17+)
+- Follow Angular style guide conventions
+- Component names in PascalCase with Component suffix
+- Use TypeScript strict mode
+- Prefer reactive patterns with RxJS
+
+### File Structure
+```
+src/app/
+├── components/      # UI components
+├── services/       # Business logic and data
+├── models/         # TypeScript interfaces
+├── directives/     # Custom directives
+├── pipes/          # Custom pipes
+└── shared/         # Shared utilities
+```
+
+### Naming Conventions
+- Components: `kebab-case.component.ts`
+- Services: `kebab-case.service.ts`
+- Models: `kebab-case.model.ts`
+- Classes/Interfaces: `PascalCase`
+- Methods/Variables: `camelCase`
+- Constants: `UPPER_SNAKE_CASE`
+
+## Development Practices
+
+### TypeScript
+- Enable strict mode
+- Define interfaces for all data structures
+- Avoid using `any` type
+- Use type inference where appropriate
+- Document complex types
+
+### Angular Patterns
+- Use dependency injection properly
+- Implement OnPush change detection where possible
+- Use reactive forms over template-driven forms
+- Leverage Angular signals for state management
+- Use async pipe in templates
+
+### RxJS Usage
+- Unsubscribe from observables properly
+- Use operators effectively
+- Implement error handling in streams
+- Avoid nested subscriptions
+- Use subjects appropriately
+
+### Performance
+- Use OnPush change detection strategy
+- Implement trackBy functions for ngFor
+- Lazy load modules when appropriate
+- Optimize bundle size
+
+### Error Handling
+- Implement global error handler
+- Provide user-friendly error messages
+- Log errors appropriately
+- Handle HTTP errors gracefully
+
+## Project Requirements
+
+### Core Features
+- Task creation and management
+- Drag and drop functionality
+- Real-time synchronization
+- Multi-user collaboration
+- Responsive design
+
+### User Experience
+- Smooth animations with Angular animations API
+- Clear visual feedback
+- Intuitive interactions
+- Accessible interface
+- Mobile-friendly design
+
+### Quality Standards
+- Clean, readable code
+- Consistent patterns
+- Proper error handling
+- Performance optimization
+- Security best practices
+
+## AI Assistant Behavior
+
+### Code Generation
+- Generate complete, working code
+- Include all necessary imports
+- Use proper Angular decorators
+- Handle edge cases
+- Include error handling
+
+### Communication
+- Explain Angular-specific concepts when needed
+- Suggest Angular best practices
+- Point out potential issues
+- Recommend Angular-native solutions
+- Keep explanations concise
+
+### Workshop Context
+- Prioritize getting things working quickly
+- Focus on demonstrating AI capabilities
+- Provide clear next steps
+- Avoid over-engineering
+- Keep solutions practical
+- Skip test files to save time
