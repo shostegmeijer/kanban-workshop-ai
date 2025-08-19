@@ -1,0 +1,102 @@
+# React Kanban Board - Project Rules
+
+## Code Style and Conventions
+
+### React Components
+- Use functional components with TypeScript
+- Use hooks for state management and side effects
+- Component names in PascalCase
+- Props interfaces should be named `{ComponentName}Props`
+- Keep components focused and single-purpose
+
+### File Structure
+```
+src/
+├── components/      # UI components
+├── hooks/          # Custom React hooks
+├── services/       # API and external services
+├── types/          # TypeScript type definitions
+├── utils/          # Helper functions
+└── styles/         # Styling files
+```
+
+### Naming Conventions
+- Components: `PascalCase.tsx`
+- Utilities: `camelCase.ts`
+- Types/Interfaces: `PascalCase`
+- CSS classes: `kebab-case`
+- Constants: `UPPER_SNAKE_CASE`
+
+## Development Practices
+
+### TypeScript
+- Enable strict mode
+- Avoid using `any` type
+- Define interfaces for all props and state
+- Use type inference where appropriate
+- Document complex types
+
+### State Management
+- Use appropriate state solution for the scope
+- Keep state close to where it's needed
+- Implement optimistic updates for better UX
+- Handle loading and error states
+
+### Performance
+- Implement React.memo where beneficial
+- Use useCallback and useMemo appropriately
+- Consider lazy loading for heavy components
+- Optimize re-renders
+
+### Error Handling
+- Use error boundaries for component errors
+- Provide user-friendly error messages
+- Log errors appropriately
+- Implement fallback UI for error states
+
+## Project Requirements
+
+### Core Features
+- Task creation and management
+- Drag and drop functionality
+- Real-time synchronization
+- Multi-user collaboration
+- Responsive design
+
+### User Experience
+- Smooth animations and transitions
+- Clear visual feedback
+- Intuitive interactions
+- Accessible interface
+- Mobile-friendly design
+
+### Quality Standards
+- Clean, readable code
+- Consistent patterns
+- Proper error handling
+- Performance optimization
+- Security best practices
+
+## AI Assistant Behavior
+
+### Code Generation
+- Generate complete, working code
+- Include all necessary imports
+- Add proper TypeScript types
+- Handle edge cases
+- Include error handling
+
+### Communication
+- Explain decisions when needed
+- Suggest alternatives when appropriate
+- Point out potential issues
+- Recommend best practices
+- Keep explanations concise
+
+### Workshop Context
+- Prioritize getting things working quickly
+- Focus on demonstrating AI capabilities
+- Provide clear next steps
+- Avoid over-engineering
+- Keep solutions practical
+- Skip test files to save time
