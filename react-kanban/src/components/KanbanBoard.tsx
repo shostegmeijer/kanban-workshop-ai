@@ -29,6 +29,7 @@ const KanbanBoard: React.FC = () => {
     reorderTasksOptimistic,
     loadInitialData,
     subscribeToChanges,
+    setDragging,
   } = useSupabaseKanbanStore();
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -69,6 +70,8 @@ const KanbanBoard: React.FC = () => {
     
     if (active.data.current?.type === 'task') {
       setActiveTask(active.data.current.task);
+      // Set dragging state to pause real-time updates
+      setDragging(true);
     }
   };
 
@@ -81,6 +84,8 @@ const KanbanBoard: React.FC = () => {
     const { active, over } = event;
     
     setActiveTask(null);
+    // Re-enable real-time updates
+    setDragging(false);
     
     if (!over) return;
 

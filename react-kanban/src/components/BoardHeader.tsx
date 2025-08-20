@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { Search, Filter, MoreVertical, Plus, Settings } from 'lucide-react';
 import { useSupabaseKanbanStore } from '../store/supabaseStore';
 import PresenceIndicator from './PresenceIndicator';
+import ColumnForm from './ColumnForm';
 
 const BoardHeader: React.FC = () => {
   const { tasks, columns, addColumn } = useSupabaseKanbanStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isColumnFormOpen, setIsColumnFormOpen] = useState(false);
 
   const completedTasksCount = tasks.filter(task => {
     const column = columns.find(c => c.id === task.columnId);
@@ -16,11 +18,8 @@ const BoardHeader: React.FC = () => {
   const totalTasks = tasks.length;
   const progressPercentage = totalTasks > 0 ? Math.round((completedTasksCount / totalTasks) * 100) : 0;
 
-  const handleAddColumn = () => {
-    const columnName = prompt('Enter column name:');
-    if (columnName?.trim()) {
-      addColumn(columnName.trim());
-    }
+  const handleAddColumn = async (title: string) => {
+    await addColumn(title);
   };
 
   return (
@@ -82,7 +81,7 @@ const BoardHeader: React.FC = () => {
           {/* Action buttons */}
           <div className="flex items-center gap-2">
             <button
-              onClick={handleAddColumn}
+              onClick={() => setIsColumnFormOpen(true)}
               className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
             >
               <Plus size={16} />
@@ -106,7 +105,7 @@ const BoardHeader: React.FC = () => {
                   </button>
                   <button 
                     onClick={() => {
-                      handleAddColumn();
+                      setIsColumnFormOpen(true);
                       setIsMenuOpen(false);
                     }}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 sm:hidden"
@@ -153,6 +152,13 @@ const BoardHeader: React.FC = () => {
           onClick={() => setIsMenuOpen(false)}
         />
       )}
+      
+      {/* Column Form Modal */}
+      <ColumnForm
+        isOpen={isColumnFormOpen}
+        onClose={() => setIsColumnFormOpen(false)}
+        onSubmit={handleAddColumn}
+      />
     </header>
   );
 };

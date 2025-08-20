@@ -77,6 +77,7 @@ interface SupabaseKanbanStore {
   users: User[]
   loading: boolean
   error: string | null
+  isDragging: boolean
 
   // Actions
   loadInitialData: () => Promise<void>
@@ -92,6 +93,7 @@ interface SupabaseKanbanStore {
   updateUserPresence: (userId: string, isOnline: boolean) => Promise<void>
   reorderTasks: (columnId: string) => void
   reorderTasksOptimistic: (tasks: Task[]) => void
+  setDragging: (isDragging: boolean) => void
 
   // Realtime subscriptions
   subscribeToChanges: () => () => void
@@ -104,6 +106,7 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
   users: [],
   loading: false,
   error: null,
+  isDragging: false,
 
 
   // Load initial data from Supabase
@@ -399,6 +402,11 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
     set({ tasks: [...otherTasks, ...columnTasks] })
   },
 
+  // Set dragging state
+  setDragging: (isDragging) => {
+    set({ isDragging })
+  },
+
   // Subscribe to real-time changes
   subscribeToChanges: () => {
     console.log('Setting up Supabase real-time subscriptions...')
@@ -410,6 +418,12 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
         { event: '*', schema: 'public', table: 'tasks' },
         (payload) => {
           console.log('Task change received:', payload)
+          
+          // Skip updates during drag to prevent interference
+          if (get().isDragging) {
+            console.log('Skipping realtime update during drag')
+            return
+          }
           
           if (payload.eventType === 'INSERT' && payload.new) {
             const newTask = dbTaskToTask(payload.new as DbTask)
