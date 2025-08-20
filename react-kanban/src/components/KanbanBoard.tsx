@@ -19,6 +19,7 @@ import Column from './Column';
 import TaskCard from './TaskCard';
 import TaskForm from './TaskForm';
 import BoardHeader from './BoardHeader';
+import ColumnForm from './ColumnForm';
 
 const KanbanBoard: React.FC = () => {
   const {
@@ -30,12 +31,16 @@ const KanbanBoard: React.FC = () => {
     loadInitialData,
     subscribeToChanges,
     setDragging,
+    updateColumn,
+    deleteColumn,
   } = useSupabaseKanbanStore();
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isColumnFormOpen, setIsColumnFormOpen] = useState(false);
+  const [editingColumn, setEditingColumn] = useState<any>(null);
 
   // Initialize presence tracking
   usePresence();
@@ -170,6 +175,27 @@ const KanbanBoard: React.FC = () => {
     setIsTaskFormOpen(true);
   };
 
+  const handleEditColumn = (column: any) => {
+    setEditingColumn(column);
+    setIsColumnFormOpen(true);
+  };
+
+  const handleDeleteColumn = async (column: any) => {
+    await deleteColumn(column.id);
+  };
+
+  const handleColumnSubmit = async (title: string) => {
+    if (editingColumn) {
+      await updateColumn(editingColumn.id, { title });
+      setEditingColumn(null);
+    }
+  };
+
+  const handleCloseColumnForm = () => {
+    setIsColumnFormOpen(false);
+    setEditingColumn(null);
+  };
+
   const handleCloseTaskForm = () => {
     setIsTaskFormOpen(false);
     setSelectedColumnId(null);
@@ -211,6 +237,8 @@ const KanbanBoard: React.FC = () => {
                       tasks={columnTasks}
                       onAddTask={() => handleAddTask(column.id)}
                       onEditTask={handleEditTask}
+                      onEditColumn={handleEditColumn}
+                      onDeleteColumn={handleDeleteColumn}
                     />
                   );
                 })}
@@ -239,6 +267,15 @@ const KanbanBoard: React.FC = () => {
           </div>
         </div>
       )}
+      
+      {/* Column Form Modal */}
+      <ColumnForm
+        isOpen={isColumnFormOpen}
+        onClose={handleCloseColumnForm}
+        onSubmit={handleColumnSubmit}
+        column={editingColumn}
+        mode={editingColumn ? 'edit' : 'create'}
+      />
     </div>
   );
 };

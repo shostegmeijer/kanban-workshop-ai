@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Plus, MoreHorizontal } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import { Column as ColumnType, Task } from '../types/kanban';
 import TaskCard from './TaskCard';
 
@@ -10,13 +10,17 @@ interface ColumnProps {
   tasks: Task[];
   onAddTask?: () => void;
   onEditTask?: (task: Task) => void;
+  onEditColumn?: (column: ColumnType) => void;
+  onDeleteColumn?: (column: ColumnType) => void;
 }
 
 const Column: React.FC<ColumnProps> = ({ 
   column, 
   tasks, 
   onAddTask,
-  onEditTask 
+  onEditTask,
+  onEditColumn,
+  onDeleteColumn 
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
@@ -90,21 +94,33 @@ const Column: React.FC<ColumnProps> = ({
             {isMenuOpen && (
               <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10 min-w-[120px]">
                 <button 
-                  className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                   onClick={() => {
                     setIsMenuOpen(false);
-                    // Add column edit functionality here
+                    onEditColumn?.(column);
                   }}
                 >
+                  <Edit size={14} />
                   Edit column
                 </button>
                 <button 
-                  className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                  className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                   onClick={() => {
                     setIsMenuOpen(false);
-                    // Add column delete functionality here
+                    if (tasks.length > 0) {
+                      const confirmed = window.confirm(`Are you sure you want to delete "${column.title}"? This will also delete all ${tasks.length} task(s) in this column.`);
+                      if (confirmed) {
+                        onDeleteColumn?.(column);
+                      }
+                    } else {
+                      const confirmed = window.confirm(`Are you sure you want to delete "${column.title}"?`);
+                      if (confirmed) {
+                        onDeleteColumn?.(column);
+                      }
+                    }
                   }}
                 >
+                  <Trash2 size={14} />
                   Delete column
                 </button>
               </div>

@@ -1,15 +1,33 @@
-import React, { useState } from 'react';
-import { X, Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Edit } from 'lucide-react';
+import { Column } from '../types/kanban';
 
 interface ColumnFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (title: string) => void;
+  column?: Column;
+  mode?: 'create' | 'edit';
 }
 
-const ColumnForm: React.FC<ColumnFormProps> = ({ isOpen, onClose, onSubmit }) => {
+const ColumnForm: React.FC<ColumnFormProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSubmit, 
+  column, 
+  mode = 'create' 
+}) => {
   const [title, setTitle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Set initial title when editing
+  useEffect(() => {
+    if (mode === 'edit' && column) {
+      setTitle(column.title);
+    } else if (mode === 'create') {
+      setTitle('');
+    }
+  }, [mode, column, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +67,9 @@ const ColumnForm: React.FC<ColumnFormProps> = ({ isOpen, onClose, onSubmit }) =>
         <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Add New Column</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {mode === 'edit' ? 'Edit Column' : 'Add New Column'}
+            </h2>
             <button
               onClick={handleClose}
               disabled={isSubmitting}
@@ -99,12 +119,12 @@ const ColumnForm: React.FC<ColumnFormProps> = ({ isOpen, onClose, onSubmit }) =>
                 {isSubmitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Creating...
+                    {mode === 'edit' ? 'Saving...' : 'Creating...'}
                   </>
                 ) : (
                   <>
-                    <Plus size={16} />
-                    Create Column
+                    {mode === 'edit' ? <Edit size={16} /> : <Plus size={16} />}
+                    {mode === 'edit' ? 'Save Changes' : 'Create Column'}
                   </>
                 )}
               </button>

@@ -89,6 +89,8 @@ interface SupabaseKanbanStore {
   syncTaskPosition: (taskId: string, newColumnId: string, newOrder: number) => Promise<void>
   getTasksByColumn: (columnId: string) => Task[]
   addColumn: (title: string) => Promise<void>
+  updateColumn: (columnId: string, updates: Partial<{ title: string }>) => Promise<void>
+  deleteColumn: (columnId: string) => Promise<void>
   setCurrentUser: (user: User) => void
   updateUserPresence: (userId: string, isOnline: boolean) => Promise<void>
   reorderTasks: (columnId: string) => void
@@ -351,6 +353,59 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
       set((state) => ({ columns: [...state.columns, newColumn] }))
     } catch (error) {
       console.error('Failed to add column:', error)
+      set({ error: (error as Error).message })
+    }
+  },
+
+  // Update column
+  updateColumn: async (columnId, updates) => {
+    try {
+      const { data, error } = await supabase
+        .from('columns')
+        .update({ title: updates.title, updated_at: new Date().toISOString() })
+        .eq('id', columnId)
+        .select()
+        .single()
+
+      if (error) throw error
+      if (!data) throw new Error('No data returned from update')
+
+      const updatedColumn = dbColumnToColumn(data)
+      set((state) => ({
+        columns: state.columns.map(c => c.id === columnId ? updatedColumn : c)
+      }))
+    } catch (error) {
+      console.error('Failed to update column:', error)
+      set({ error: (error as Error).message })
+    }
+  },
+
+  // Delete column (and all its tasks)
+  deleteColumn: async (columnId) => {
+    try {
+      // First delete all tasks in the column
+      const { error: tasksError } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('column_id', columnId)
+
+      if (tasksError) throw tasksError
+
+      // Then delete the column
+      const { error: columnError } = await supabase
+        .from('columns')
+        .delete()
+        .eq('id', columnId)
+
+      if (columnError) throw columnError
+
+      // Update local state
+      set((state) => ({
+        columns: state.columns.filter(c => c.id !== columnId),
+        tasks: state.tasks.filter(t => t.columnId !== columnId)
+      }))
+    } catch (error) {
+      console.error('Failed to delete column:', error)
       set({ error: (error as Error).message })
     }
   },
