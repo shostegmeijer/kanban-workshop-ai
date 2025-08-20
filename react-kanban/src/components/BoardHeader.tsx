@@ -4,6 +4,7 @@ import { UserButton } from '@clerk/clerk-react';
 import { useSupabaseKanbanStore } from '../store/supabaseStore';
 import PresenceIndicator from './PresenceIndicator';
 import ColumnForm from './ColumnForm';
+import ConnectionStatus from './ConnectionStatus';
 
 const BoardHeader: React.FC = () => {
   const { tasks, columns, addColumn } = useSupabaseKanbanStore();
@@ -76,6 +77,9 @@ const BoardHeader: React.FC = () => {
 
         {/* Right section - Users and actions */}
         <div className="flex items-center gap-4">
+          {/* Connection status */}
+          <ConnectionStatus />
+
           {/* User presence */}
           <PresenceIndicator />
 
