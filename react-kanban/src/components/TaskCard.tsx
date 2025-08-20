@@ -97,6 +97,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
         task-card
         priority-${task.priority}
         group
+        select-none
         ${isDragging ? 'dragging' : ''}
       `}
     >

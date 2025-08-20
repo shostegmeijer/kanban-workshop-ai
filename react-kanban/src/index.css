@@ -25,7 +25,9 @@
 
 @layer components {
   .task-card {
-    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3 hover:shadow-md transition-shadow cursor-grab;
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3 hover:shadow-md transition-shadow cursor-grab select-none;
+    touch-action: none; /* Prevent scrolling on mobile during drag */
+    user-select: none; /* Prevent text selection */
   }
   
   .task-card:active {

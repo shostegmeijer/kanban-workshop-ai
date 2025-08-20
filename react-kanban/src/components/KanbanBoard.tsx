@@ -58,14 +58,15 @@ const KanbanBoard: React.FC = () => {
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
+      // Remove activation constraints to make dragging immediate
       activationConstraint: {
-        distance: {x: 5, y: 5}, // Allow more reliable activation
+        distance: 0, // Start dragging immediately
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 150,
-        tolerance: {x: 5, y: 5},
+        delay: 0, // No delay for touch
+        tolerance: 0, // Start immediately on touch
       },
     })
   );
