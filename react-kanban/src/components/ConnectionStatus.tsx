@@ -12,7 +12,6 @@ const ConnectionStatus: React.FC = () => {
     
     channel
       .subscribe((status) => {
-        console.log('🔌 Connection status:', status);
         setStatus(status);
       });
 

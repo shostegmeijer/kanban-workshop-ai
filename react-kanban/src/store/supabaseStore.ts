@@ -149,7 +149,6 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
         return { ...task, order: newOrder }
       })
 
-      console.log('🔄 Loaded and normalized tasks:', normalizedTasks.length)
       set({ tasks: normalizedTasks, columns, users, loading: false })
     } catch (error) {
       console.error('Failed to load initial data:', error)
@@ -427,8 +426,6 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
 
   // Set current user and sync to database
   setCurrentUser: async (user) => {
-    console.log('👤 Setting current user:', user.name)
-    
     // Update local state immediately
     set((state) => ({
       users: state.users.some((u) => u.id === user.id)
@@ -438,7 +435,7 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
 
     try {
       // Upsert user to database for real-time sync
-      const { error } = await supabase
+      await supabase
         .from('users')
         .upsert({
           id: user.id,
@@ -448,21 +445,13 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
           last_seen: new Date().toISOString(),
         })
         .select()
-
-      if (error) {
-        console.error('❌ Failed to sync user to database:', error)
-      } else {
-        console.log('✅ User synced to database successfully')
-      }
     } catch (error) {
-      console.error('❌ Error syncing user:', error)
+      console.error('Failed to sync user:', error)
     }
   },
 
   // Update user presence
   updateUserPresence: async (userId, isOnline) => {
-    console.log(`👤 Updating user presence: ${userId} -> ${isOnline ? 'online' : 'offline'}`)
-    
     try {
       const { error } = await supabase
         .from('users')
@@ -473,11 +462,8 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
         .eq('id', userId)
 
       if (error) {
-        console.error('❌ Failed to update user presence in database:', error)
         throw error
       }
-
-      console.log('✅ User presence updated in database')
 
       // Update local state
       set((state) => ({
@@ -488,7 +474,7 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
         )
       }))
     } catch (error) {
-      console.error('❌ Error updating user presence:', error)
+      console.error('Error updating user presence:', error)
       set({ error: (error as Error).message })
     }
   },
@@ -512,45 +498,35 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
 
   // Subscribe to real-time changes
   subscribeToChanges: () => {
-    console.log('🔄 Setting up Supabase real-time subscriptions...')
-    
     const tasksSubscription = supabase
       .channel('tasks-channel')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tasks' },
         (payload) => {
-          console.log('📋 Task change received:', payload.eventType, payload)
-          
           // Skip updates during drag to prevent interference
           if (get().isDragging) {
-            console.log('⏸️ Skipping realtime update during drag')
             return
           }
           
           if (payload.eventType === 'INSERT' && payload.new) {
-            console.log('➕ Adding new task from realtime')
             const newTask = dbTaskToTask(payload.new as DbTask)
             set((state) => ({
               tasks: [...state.tasks.filter(t => !t.id.startsWith('temp-')), newTask]
             }))
           } else if (payload.eventType === 'UPDATE' && payload.new) {
-            console.log('✏️ Updating task from realtime')
             const updatedTask = dbTaskToTask(payload.new as DbTask)
             set((state) => ({
               tasks: state.tasks.map(t => t.id === updatedTask.id ? updatedTask : t)
             }))
           } else if (payload.eventType === 'DELETE' && payload.old) {
-            console.log('🗑️ Deleting task from realtime')
             set((state) => ({
               tasks: state.tasks.filter(t => t.id !== (payload.old as DbTask).id)
             }))
           }
         }
       )
-      .subscribe((status) => {
-        console.log('📋 Tasks subscription status:', status)
-      })
+      .subscribe()
 
     const columnsSubscription = supabase
       .channel('columns-channel')
@@ -558,29 +534,22 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
         'postgres_changes',
         { event: '*', schema: 'public', table: 'columns' },
         (payload) => {
-          console.log('🏛️ Column change received:', payload.eventType, payload)
-          
           if (payload.eventType === 'INSERT' && payload.new) {
-            console.log('➕ Adding new column from realtime')
             const newColumn = dbColumnToColumn(payload.new as DbColumn)
             set((state) => ({ columns: [...state.columns, newColumn] }))
           } else if (payload.eventType === 'UPDATE' && payload.new) {
-            console.log('✏️ Updating column from realtime')
             const updatedColumn = dbColumnToColumn(payload.new as DbColumn)
             set((state) => ({
               columns: state.columns.map(c => c.id === updatedColumn.id ? updatedColumn : c)
             }))
           } else if (payload.eventType === 'DELETE' && payload.old) {
-            console.log('🗑️ Deleting column from realtime')
             set((state) => ({
               columns: state.columns.filter(c => c.id !== (payload.old as DbColumn).id)
             }))
           }
         }
       )
-      .subscribe((status) => {
-        console.log('🏛️ Columns subscription status:', status)
-      })
+      .subscribe()
 
     const usersSubscription = supabase
       .channel('users-channel')
@@ -588,29 +557,22 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
         'postgres_changes',
         { event: '*', schema: 'public', table: 'users' },
         (payload) => {
-          console.log('👥 User change received:', payload.eventType, payload)
-          
           if (payload.eventType === 'INSERT' && payload.new) {
-            console.log('➕ Adding new user from realtime')
             const newUser = dbUserToUser(payload.new as DbUser)
             set((state) => ({ users: [...state.users, newUser] }))
           } else if (payload.eventType === 'UPDATE' && payload.new) {
-            console.log('✏️ Updating user presence from realtime')
             const updatedUser = dbUserToUser(payload.new as DbUser)
             set((state) => ({
               users: state.users.map(u => u.id === updatedUser.id ? updatedUser : u)
             }))
           } else if (payload.eventType === 'DELETE' && payload.old) {
-            console.log('🗑️ Removing user from realtime')
             set((state) => ({
               users: state.users.filter(u => u.id !== (payload.old as DbUser).id)
             }))
           }
         }
       )
-      .subscribe((status) => {
-        console.log('👥 Users subscription status:', status)
-      })
+      .subscribe()
 
     // Return cleanup function
     return () => {
