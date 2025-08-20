@@ -20,8 +20,6 @@ import TaskCard from './TaskCard';
 import TaskForm from './TaskForm';
 import BoardHeader from './BoardHeader';
 import ColumnForm from './ColumnForm';
-import DebugPanel from './DebugPanel';
-import RealtimeTest from './RealtimeTest';
 
 const KanbanBoard: React.FC = () => {
   const {
@@ -280,11 +278,6 @@ const KanbanBoard: React.FC = () => {
         mode={editingColumn ? 'edit' : 'create'}
       />
 
-      {/* Debug Panel (development only) */}
-      <DebugPanel />
-      
-      {/* Real-time Test (development only) */}
-      <RealtimeTest />
     </div>
   );
 };
