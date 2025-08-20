@@ -122,7 +122,7 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
         { data: dbColumns, error: columnsError },
         { data: dbUsers, error: usersError }
       ] = await Promise.all([
-        supabase.from('tasks').select('*').order('order'),
+        supabase.from('tasks').select('*').order('column_id').order('order'),
         supabase.from('columns').select('*').order('order'),
         supabase.from('users').select('*')
       ])
@@ -136,7 +136,21 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
       // Don't load users from database - they will be populated by Clerk authentication
       const users: User[] = []
 
-      set({ tasks, columns, users, loading: false })
+      // Fix any ordering issues by normalizing order values within each column
+      const normalizedTasks = tasks.map(task => {
+        const columnTasks = tasks.filter(t => t.columnId === task.columnId).sort((a, b) => {
+          if (a.order === b.order) {
+            // If orders are the same, use creation time as tiebreaker
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          }
+          return a.order - b.order
+        })
+        const newOrder = columnTasks.findIndex(t => t.id === task.id)
+        return { ...task, order: newOrder }
+      })
+
+      console.log('🔄 Loaded and normalized tasks:', normalizedTasks.length)
+      set({ tasks: normalizedTasks, columns, users, loading: false })
     } catch (error) {
       console.error('Failed to load initial data:', error)
       set({ error: (error as Error).message, loading: false })
