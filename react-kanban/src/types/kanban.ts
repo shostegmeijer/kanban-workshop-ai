@@ -16,12 +16,14 @@ export interface Column {
   order: number;
 }
 
+// Use Clerk's user type for real authentication
 export interface User {
   id: string;
-  name: string;
-  avatar?: string;
-  isOnline: boolean;
-  lastSeen: Date;
+  name: string | null;
+  email?: string;
+  imageUrl?: string;
+  isOnline?: boolean;
+  lastSeen?: Date;
 }
 
 export interface BoardState {

@@ -16,17 +16,17 @@ const PresenceIndicator: React.FC = () => {
           <div
             key={user.id}
             className="relative"
-            title={`${user.name} (online)`}
+            title={`${user.name || 'Anonymous User'} (online)`}
           >
-            {user.avatar ? (
+            {user.imageUrl ? (
               <img
-                src={user.avatar}
-                alt={user.name}
+                src={user.imageUrl}
+                alt={user.name || 'User'}
                 className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 hover:scale-110 transition-transform"
               />
             ) : (
               <div className="w-8 h-8 rounded-full border-2 border-white bg-blue-500 flex items-center justify-center text-white text-sm font-medium hover:scale-110 transition-transform">
-                {user.name.charAt(0).toUpperCase()}
+                {(user.name || 'A').charAt(0).toUpperCase()}
               </div>
             )}
             
@@ -60,14 +60,14 @@ const PresenceIndicator: React.FC = () => {
             {/* Online users */}
             {onlineUsers.map(user => (
               <div key={user.id} className="flex items-center gap-2 text-sm">
-                {user.avatar ? (
-                  <img src={user.avatar} alt={user.name} className="w-5 h-5 rounded-full" />
+                {user.imageUrl ? (
+                  <img src={user.imageUrl} alt={user.name || 'User'} className="w-5 h-5 rounded-full" />
                 ) : (
                   <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs">
-                    {user.name.charAt(0).toUpperCase()}
+                    {(user.name || 'A').charAt(0).toUpperCase()}
                   </div>
                 )}
-                <span className="flex-1">{user.name}</span>
+                <span className="flex-1">{user.name || 'Anonymous User'}</span>
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               </div>
             ))}
@@ -75,14 +75,14 @@ const PresenceIndicator: React.FC = () => {
             {/* Offline users */}
             {offlineUsers.map(user => (
               <div key={user.id} className="flex items-center gap-2 text-sm text-gray-500">
-                {user.avatar ? (
-                  <img src={user.avatar} alt={user.name} className="w-5 h-5 rounded-full grayscale" />
+                {user.imageUrl ? (
+                  <img src={user.imageUrl} alt={user.name || 'User'} className="w-5 h-5 rounded-full grayscale" />
                 ) : (
                   <div className="w-5 h-5 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs">
-                    {user.name.charAt(0).toUpperCase()}
+                    {(user.name || 'A').charAt(0).toUpperCase()}
                   </div>
                 )}
-                <span className="flex-1">{user.name}</span>
+                <span className="flex-1">{user.name || 'Anonymous User'}</span>
                 <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
               </div>
             ))}

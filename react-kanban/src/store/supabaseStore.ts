@@ -65,7 +65,7 @@ const dbColumnToColumn = (dbColumn: DbColumn): Column => ({
 const dbUserToUser = (dbUser: DbUser): User => ({
   id: dbUser.id,
   name: dbUser.name,
-  avatar: dbUser.avatar || undefined,
+  imageUrl: dbUser.avatar || undefined,
   isOnline: dbUser.is_online,
   lastSeen: new Date(dbUser.last_seen),
 })

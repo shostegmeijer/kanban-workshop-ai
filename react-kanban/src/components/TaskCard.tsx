@@ -3,7 +3,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Calendar, User, AlertCircle, Edit, Trash2 } from 'lucide-react';
 import { Task, Priority } from '../types/kanban';
-import { useKanbanStore } from '../store/kanbanStore';
+import { useSupabaseKanbanStore } from '../store/supabaseStore';
 
 interface TaskCardProps {
   task: Task;
@@ -11,7 +11,7 @@ interface TaskCardProps {
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
-  const deleteTask = useKanbanStore(state => state.deleteTask);
+  const { deleteTask } = useSupabaseKanbanStore();
   
   const {
     attributes,

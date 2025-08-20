@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, User, FileText, AlertTriangle } from 'lucide-react';
 import { Task, TaskFormData, Priority } from '../types/kanban';
-import { useKanbanStore } from '../store/kanbanStore';
+import { useSupabaseKanbanStore } from '../store/supabaseStore';
 
 interface TaskFormProps {
   columnId: string;
@@ -10,7 +10,7 @@ interface TaskFormProps {
 }
 
 const TaskForm: React.FC<TaskFormProps> = ({ columnId, task, onClose }) => {
-  const { addTask, updateTask, board } = useKanbanStore();
+  const { addTask, updateTask, tasks } = useSupabaseKanbanStore();
   
   const [formData, setFormData] = useState<TaskFormData>({
     title: '',
@@ -36,7 +36,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ columnId, task, onClose }) => {
 
   // Get unique assignees from existing tasks
   const existingAssignees = Array.from(
-    new Set(board.tasks.map(t => t.assignee).filter(Boolean))
+    new Set(tasks.map(t => t.assignee).filter(Boolean))
   );
 
   const validateForm = (): boolean => {
@@ -85,11 +85,13 @@ const TaskForm: React.FC<TaskFormProps> = ({ columnId, task, onClose }) => {
         });
       } else {
         // Create new task
-        addTask(columnId, {
+        addTask({
           title: formData.title.trim(),
           description: formData.description?.trim() || undefined,
           assignee: formData.assignee?.trim() || undefined,
           priority: formData.priority,
+          columnId,
+          order: 0, // Will be calculated by the store
         });
       }
 

@@ -1,49 +1,56 @@
 import { useEffect, useState } from 'react';
+import { useUser } from '@clerk/clerk-react';
 import { useSupabaseKanbanStore } from '../store/supabaseStore';
-import { nanoid } from 'nanoid';
-
-// Generate a unique session ID for this browser tab
-const sessionId = nanoid();
-
-// Create a mock current user (in a real app, this would come from auth)
-const currentUser = {
-  id: `user-${sessionId}`,
-  name: `Workshop User ${sessionId.slice(0, 4)}`,
-  avatar: `https://api.dicebear.com/7.x/avatars/svg?seed=${sessionId}`,
-  isOnline: true,
-  lastSeen: new Date(),
-};
+import { User } from '../types/kanban';
 
 export const usePresence = () => {
   const { updateUserPresence, setCurrentUser } = useSupabaseKanbanStore();
   const [isOnline, setIsOnline] = useState(true);
+  const { user: clerkUser, isLoaded } = useUser();
 
   useEffect(() => {
+    if (!isLoaded || !clerkUser) return;
+
+    // Convert Clerk user to our User interface
+    const currentUser: User = {
+      id: clerkUser.id,
+      name: clerkUser.fullName || clerkUser.firstName || 'Anonymous User',
+      email: clerkUser.primaryEmailAddress?.emailAddress,
+      imageUrl: clerkUser.imageUrl,
+      isOnline: true,
+      lastSeen: new Date()
+    };
+
     // Set current user and mark as online when component mounts
     setCurrentUser(currentUser);
     updateUserPresence(currentUser.id, true);
 
     // Handle browser visibility changes
     const handleVisibilityChange = () => {
+      if (!clerkUser) return;
       const online = !document.hidden;
       setIsOnline(online);
-      updateUserPresence(currentUser.id, online);
+      updateUserPresence(clerkUser.id, online);
     };
 
     // Handle page unload
     const handleBeforeUnload = () => {
-      updateUserPresence(currentUser.id, false);
+      if (clerkUser) {
+        updateUserPresence(clerkUser.id, false);
+      }
     };
 
     // Handle network status changes
     const handleOnline = () => {
+      if (!clerkUser) return;
       setIsOnline(true);
-      updateUserPresence(currentUser.id, true);
+      updateUserPresence(clerkUser.id, true);
     };
 
     const handleOffline = () => {
+      if (!clerkUser) return;
       setIsOnline(false);
-      updateUserPresence(currentUser.id, false);
+      updateUserPresence(clerkUser.id, false);
     };
 
     // Add event listeners
@@ -54,8 +61,8 @@ export const usePresence = () => {
 
     // Send periodic heartbeat to maintain presence
     const heartbeatInterval = setInterval(() => {
-      if (isOnline && !document.hidden) {
-        updateUserPresence(currentUser.id, true);
+      if (isOnline && !document.hidden && clerkUser) {
+        updateUserPresence(clerkUser.id, true);
       }
     }, 30000); // Every 30 seconds
 
@@ -68,12 +75,21 @@ export const usePresence = () => {
       clearInterval(heartbeatInterval);
       
       // Mark user as offline when component unmounts
-      updateUserPresence(currentUser.id, false);
+      if (clerkUser) {
+        updateUserPresence(clerkUser.id, false);
+      }
     };
-  }, [updateUserPresence, setCurrentUser, isOnline]);
+  }, [updateUserPresence, setCurrentUser, isOnline, clerkUser, isLoaded]);
 
   return {
-    currentUser,
+    currentUser: clerkUser ? {
+      id: clerkUser.id,
+      name: clerkUser.fullName || clerkUser.firstName || 'Anonymous User',
+      email: clerkUser.primaryEmailAddress?.emailAddress,
+      imageUrl: clerkUser.imageUrl,
+      isOnline: true,
+      lastSeen: new Date()
+    } : null,
     isOnline,
   };
 };

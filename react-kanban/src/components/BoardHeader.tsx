@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Filter, MoreVertical, Plus, Settings } from 'lucide-react';
+import { UserButton } from '@clerk/clerk-react';
 import { useSupabaseKanbanStore } from '../store/supabaseStore';
 import PresenceIndicator from './PresenceIndicator';
 import ColumnForm from './ColumnForm';
