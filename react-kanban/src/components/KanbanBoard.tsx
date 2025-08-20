@@ -14,6 +14,7 @@ import {
 import { arrayMove } from '@dnd-kit/sortable';
 import { Task } from '../types/kanban';
 import { useSupabaseKanbanStore } from '../store/supabaseStore';
+import { usePresence } from '../hooks/usePresence';
 import Column from './Column';
 import TaskCard from './TaskCard';
 import TaskForm from './TaskForm';
@@ -22,11 +23,10 @@ import BoardHeader from './BoardHeader';
 const KanbanBoard: React.FC = () => {
   const {
     columns,
-    tasks,
-    users,
     getTasksByColumn,
-    moveTask,
-    updateTask,
+    moveTaskOptimistic,
+    syncTaskPosition,
+    reorderTasksOptimistic,
     loadInitialData,
     subscribeToChanges,
   } = useSupabaseKanbanStore();
@@ -35,6 +35,9 @@ const KanbanBoard: React.FC = () => {
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  // Initialize presence tracking
+  usePresence();
 
   // Load initial data and set up real-time subscriptions
   useEffect(() => {
@@ -70,7 +73,14 @@ const KanbanBoard: React.FC = () => {
   };
 
   const handleDragOver = (event: DragOverEvent) => {
+    // Don't update anything during drag - keep it completely local to dnd-kit
+    // This makes dragging smooth with no database calls
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    
+    setActiveTask(null);
     
     if (!over) return;
 
@@ -85,50 +95,20 @@ const KanbanBoard: React.FC = () => {
 
     if (!isActiveTask) return;
 
-    // Dropping a task over another task
-    if (isActiveTask && isOverTask) {
-      const activeTask = active.data.current?.task as Task;
-      const overTask = over.data.current?.task as Task;
+    const activeTask = active.data.current?.task as Task;
+    let newColumnId = activeTask.columnId;
+    let newOrder = activeTask.order;
 
+    // Calculate the new position based on where we dropped
+    if (isOverTask) {
+      const overTask = over.data.current?.task as Task;
+      newColumnId = overTask.columnId;
+      
+      // If moving to different column, calculate position
       if (activeTask.columnId !== overTask.columnId) {
-        // Move to different column
-        moveTask(activeTask.id, overTask.columnId, overTask.order);
-      }
-    }
-
-    // Dropping a task over a column
-    if (isActiveTask && isOverColumn) {
-      const activeTask = active.data.current?.task as Task;
-      const overColumn = over.data.current?.column;
-
-      if (activeTask.columnId !== overColumn.id) {
-        const targetColumnTasks = getTasksByColumn(overColumn.id);
-        moveTask(activeTask.id, overColumn.id, targetColumnTasks.length);
-      }
-    }
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    setActiveTask(null);
-    
-    if (!over) return;
-
-    const activeId = active.id;
-    const overId = over.id;
-
-    if (activeId === overId) return;
-
-    const isActiveTask = active.data.current?.type === 'task';
-    const isOverTask = over.data.current?.type === 'task';
-
-    if (isActiveTask && isOverTask) {
-      const activeTask = active.data.current?.task as Task;
-      const overTask = over.data.current?.task as Task;
-
-      // If in the same column, reorder
-      if (activeTask.columnId === overTask.columnId) {
+        newOrder = overTask.order;
+      } else {
+        // Same column reordering
         const columnTasks = getTasksByColumn(activeTask.columnId);
         const activeIndex = columnTasks.findIndex((t: Task) => t.id === activeId);
         const overIndex = columnTasks.findIndex((t: Task) => t.id === overId);
@@ -136,14 +116,40 @@ const KanbanBoard: React.FC = () => {
         if (activeIndex !== overIndex) {
           const reorderedTasks = arrayMove(columnTasks, activeIndex, overIndex);
           
-          // Update order for all affected tasks
-          reorderedTasks.forEach((task: Task, index: number) => {
-            if (task.order !== index) {
-              updateTask(task.id, { order: index });
+          // First update local state optimistically
+          const updatedTasks = reorderedTasks.map((task: Task, index: number) => ({
+            ...task,
+            order: index
+          }));
+          reorderTasksOptimistic(updatedTasks);
+          
+          // Then sync each task's position to database
+          for (let i = 0; i < updatedTasks.length; i++) {
+            const task = updatedTasks[i];
+            if (task.order !== columnTasks[i]?.order) {
+              await syncTaskPosition(task.id, task.columnId, task.order);
             }
-          });
+          }
+          return; // Early return for same-column reordering
         }
       }
+    } else if (isOverColumn) {
+      const overColumn = over.data.current?.column;
+      newColumnId = overColumn.id;
+      
+      if (activeTask.columnId !== overColumn.id) {
+        const targetColumnTasks = getTasksByColumn(overColumn.id);
+        newOrder = targetColumnTasks.length; // Add to end of column
+      }
+    }
+
+    // If position actually changed, update optimistically then sync
+    if (newColumnId !== activeTask.columnId || newOrder !== activeTask.order) {
+      // Update local state first for immediate feedback
+      moveTaskOptimistic(activeTask.id, newColumnId, newOrder);
+      
+      // Then sync with database
+      await syncTaskPosition(activeTask.id, newColumnId, newOrder);
     }
   };
 

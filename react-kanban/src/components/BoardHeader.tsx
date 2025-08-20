@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
-import { Users, Search, Filter, MoreVertical, Plus, Settings } from 'lucide-react';
-import { useKanbanStore } from '../store/kanbanStore';
+import { Search, Filter, MoreVertical, Plus, Settings } from 'lucide-react';
+import { useSupabaseKanbanStore } from '../store/supabaseStore';
+import PresenceIndicator from './PresenceIndicator';
 
 const BoardHeader: React.FC = () => {
-  const { board, addColumn } = useKanbanStore();
+  const { tasks, columns, addColumn } = useSupabaseKanbanStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const onlineUsers = board.users.filter(user => user.isOnline);
-  const totalTasks = board.tasks.length;
-  const completedTasks = board.tasks.filter(task => task.columnId === 'done').length;
-  const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const completedTasksCount = tasks.filter(task => {
+    const column = columns.find(c => c.id === task.columnId);
+    return column?.title.toLowerCase() === 'done';
+  }).length;
+  
+  const totalTasks = tasks.length;
+  const progressPercentage = totalTasks > 0 ? Math.round((completedTasksCount / totalTasks) * 100) : 0;
 
   const handleAddColumn = () => {
     const columnName = prompt('Enter column name:');
@@ -25,12 +29,12 @@ const BoardHeader: React.FC = () => {
         {/* Left section - Board info */}
         <div className="flex items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{board.title}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Kanban Workshop Board</h1>
             <div className="flex items-center gap-4 mt-1">
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <span>{totalTasks} tasks</span>
                 <span>•</span>
-                <span>{completedTasks} completed</span>
+                <span>{completedTasksCount} completed</span>
                 <span>•</span>
                 <span className="flex items-center gap-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -73,35 +77,7 @@ const BoardHeader: React.FC = () => {
         {/* Right section - Users and actions */}
         <div className="flex items-center gap-4">
           {/* User presence */}
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2">
-              <Users size={18} className="text-gray-500" />
-              <span className="text-sm text-gray-600">
-                {onlineUsers.length} online
-              </span>
-            </div>
-            
-            {/* User avatars */}
-            <div className="flex -space-x-2">
-              {onlineUsers.slice(0, 4).map((user, index) => (
-                <div
-                  key={user.id}
-                  className="relative w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium border-2 border-white shadow-sm overflow-hidden"
-                  title={`${user.name} (online)`}
-                  style={{ zIndex: onlineUsers.length - index }}
-                >
-                  {user.avatar || user.name.charAt(0).toUpperCase()}
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 border-2 border-white rounded-full"></div>
-                </div>
-              ))}
-              
-              {onlineUsers.length > 4 && (
-                <div className="relative w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs font-medium border-2 border-white">
-                  +{onlineUsers.length - 4}
-                </div>
-              )}
-            </div>
-          </div>
+          <PresenceIndicator />
 
           {/* Action buttons */}
           <div className="flex items-center gap-2">

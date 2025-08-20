@@ -84,11 +84,14 @@ interface SupabaseKanbanStore {
   updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>
   deleteTask: (taskId: string) => Promise<void>
   moveTask: (taskId: string, newColumnId: string, newOrder: number) => Promise<void>
+  moveTaskOptimistic: (taskId: string, newColumnId: string, newOrder: number) => void
+  syncTaskPosition: (taskId: string, newColumnId: string, newOrder: number) => Promise<void>
   getTasksByColumn: (columnId: string) => Task[]
   addColumn: (title: string) => Promise<void>
   setCurrentUser: (user: User) => void
   updateUserPresence: (userId: string, isOnline: boolean) => Promise<void>
   reorderTasks: (columnId: string) => void
+  reorderTasksOptimistic: (tasks: Task[]) => void
 
   // Realtime subscriptions
   subscribeToChanges: () => () => void
@@ -134,8 +137,19 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
     }
   },
 
-  // Add new task
+  // Add new task (with optimistic updates)
   addTask: async (taskData) => {
+    // Create optimistic task with temporary ID
+    const optimisticTask: Task = {
+      id: `temp-${Date.now()}`,
+      ...taskData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    
+    // Optimistic update - add to UI immediately
+    set((state) => ({ tasks: [...state.tasks, optimisticTask] }))
+
     try {
       const { data, error } = await supabase
         .from('tasks')
@@ -147,10 +161,18 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
       if (!data) throw new Error('No data returned from insert')
 
       const newTask = dbTaskToTask(data)
-      set((state) => ({ tasks: [...state.tasks, newTask] }))
+      
+      // Replace optimistic task with real task
+      set((state) => ({ 
+        tasks: state.tasks.map(t => t.id === optimisticTask.id ? newTask : t)
+      }))
     } catch (error) {
       console.error('Failed to add task:', error)
-      set({ error: (error as Error).message })
+      // Remove optimistic task on error
+      set((state) => ({ 
+        tasks: state.tasks.filter(t => t.id !== optimisticTask.id),
+        error: (error as Error).message 
+      }))
     }
   },
 
@@ -207,36 +229,97 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
     }
   },
 
-  // Move task to different column/order
-  moveTask: async (taskId, newColumnId, newOrder) => {
-    const task = get().tasks.find(t => t.id === taskId)
-    if (!task) return
+  // Move task optimistically (for dragging - no database update)
+  moveTaskOptimistic: (taskId, newColumnId, newOrder) => {
+    set((state) => {
+      const task = state.tasks.find(t => t.id === taskId)
+      if (!task) return state
 
-    try {
-      // Update task position in database
-      await get().updateTask(taskId, { 
-        columnId: newColumnId, 
-        order: newOrder 
-      })
+      // Get all tasks in the target column except the one being moved
+      const targetColumnTasks = state.tasks
+        .filter(t => t.columnId === newColumnId && t.id !== taskId)
+        .sort((a, b) => a.order - b.order)
 
-      // Reorder other tasks in the target column
-      const targetColumnTasks = get().tasks.filter(t => 
-        t.columnId === newColumnId && t.id !== taskId
+      // Insert the task at the new position
+      targetColumnTasks.splice(newOrder, 0, { ...task, columnId: newColumnId })
+
+      // Update orders for all tasks in the column
+      const updatedColumnTasks = targetColumnTasks.map((t, index) => ({
+        ...t,
+        order: index
+      }))
+
+      // Get tasks from other columns
+      const otherTasks = state.tasks.filter(t => 
+        t.columnId !== newColumnId && t.id !== taskId
       )
 
-      // Update order for tasks that need reordering
-      for (let i = 0; i < targetColumnTasks.length; i++) {
-        const targetTask = targetColumnTasks[i]
-        const expectedOrder = i >= newOrder ? i + 1 : i
-        
-        if (targetTask.order !== expectedOrder) {
-          await get().updateTask(targetTask.id, { order: expectedOrder })
+      return {
+        tasks: [...otherTasks, ...updatedColumnTasks]
+      }
+    })
+  },
+
+  // Reorder tasks optimistically (for dragging within same column)
+  reorderTasksOptimistic: (tasks) => {
+    set((state) => {
+      const taskIds = new Set(tasks.map(t => t.id))
+      const otherTasks = state.tasks.filter(t => !taskIds.has(t.id))
+      return { tasks: [...otherTasks, ...tasks] }
+    })
+  },
+
+  // Sync task position with database (called on drag end)
+  syncTaskPosition: async (taskId, newColumnId, newOrder) => {
+    const originalTasks = get().tasks
+    
+    try {
+      // Update the main task in database
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({ 
+          column_id: newColumnId, 
+          order: newOrder,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', taskId)
+
+      if (updateError) throw updateError
+
+      // Get all tasks in the target column to update their orders
+      const columnTasks = get().tasks
+        .filter(t => t.columnId === newColumnId)
+        .sort((a, b) => a.order - b.order)
+
+      // Batch update orders for all tasks in the column
+      const updates = columnTasks.map((task, index) => ({
+        id: task.id,
+        order: index
+      }))
+
+      // Update orders in database (skip if order hasn't changed)
+      for (const update of updates) {
+        const task = originalTasks.find(t => t.id === update.id)
+        if (task && task.order !== update.order) {
+          await supabase
+            .from('tasks')
+            .update({ order: update.order })
+            .eq('id', update.id)
         }
       }
     } catch (error) {
-      console.error('Failed to move task:', error)
-      set({ error: (error as Error).message })
+      console.error('Failed to sync task position:', error)
+      // Rollback on error
+      set({ tasks: originalTasks, error: (error as Error).message })
     }
+  },
+
+  // Move task to different column/order (with database sync)
+  moveTask: async (taskId, newColumnId, newOrder) => {
+    // First do optimistic update
+    get().moveTaskOptimistic(taskId, newColumnId, newOrder)
+    // Then sync with database
+    await get().syncTaskPosition(taskId, newColumnId, newOrder)
   },
 
   // Get tasks by column ID
@@ -327,8 +410,22 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
         { event: '*', schema: 'public', table: 'tasks' },
         (payload) => {
           console.log('Task change received:', payload)
-          // Reload data when changes occur
-          get().loadInitialData()
+          
+          if (payload.eventType === 'INSERT' && payload.new) {
+            const newTask = dbTaskToTask(payload.new as DbTask)
+            set((state) => ({
+              tasks: [...state.tasks.filter(t => !t.id.startsWith('temp-')), newTask]
+            }))
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
+            const updatedTask = dbTaskToTask(payload.new as DbTask)
+            set((state) => ({
+              tasks: state.tasks.map(t => t.id === updatedTask.id ? updatedTask : t)
+            }))
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            set((state) => ({
+              tasks: state.tasks.filter(t => t.id !== (payload.old as DbTask).id)
+            }))
+          }
         }
       )
       .subscribe()
@@ -340,7 +437,20 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
         { event: '*', schema: 'public', table: 'columns' },
         (payload) => {
           console.log('Column change received:', payload)
-          get().loadInitialData()
+          
+          if (payload.eventType === 'INSERT' && payload.new) {
+            const newColumn = dbColumnToColumn(payload.new as DbColumn)
+            set((state) => ({ columns: [...state.columns, newColumn] }))
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
+            const updatedColumn = dbColumnToColumn(payload.new as DbColumn)
+            set((state) => ({
+              columns: state.columns.map(c => c.id === updatedColumn.id ? updatedColumn : c)
+            }))
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            set((state) => ({
+              columns: state.columns.filter(c => c.id !== (payload.old as DbColumn).id)
+            }))
+          }
         }
       )
       .subscribe()
@@ -352,7 +462,20 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
         { event: '*', schema: 'public', table: 'users' },
         (payload) => {
           console.log('User change received:', payload)
-          get().loadInitialData()
+          
+          if (payload.eventType === 'INSERT' && payload.new) {
+            const newUser = dbUserToUser(payload.new as DbUser)
+            set((state) => ({ users: [...state.users, newUser] }))
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
+            const updatedUser = dbUserToUser(payload.new as DbUser)
+            set((state) => ({
+              users: state.users.map(u => u.id === updatedUser.id ? updatedUser : u)
+            }))
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            set((state) => ({
+              users: state.users.filter(u => u.id !== (payload.old as DbUser).id)
+            }))
+          }
         }
       )
       .subscribe()
