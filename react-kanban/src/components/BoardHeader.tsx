@@ -79,6 +79,9 @@ const BoardHeader: React.FC = () => {
           {/* User presence */}
           <PresenceIndicator />
 
+          {/* User account */}
+          <UserButton afterSignOutUrl="/" />
+
           {/* Action buttons */}
           <div className="flex items-center gap-2">
             <button

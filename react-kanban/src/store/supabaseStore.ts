@@ -133,7 +133,8 @@ export const useSupabaseKanbanStore = create<SupabaseKanbanStore>()((set, get) =
 
       const tasks = dbTasks?.map(dbTaskToTask) || []
       const columns = dbColumns?.map(dbColumnToColumn) || []
-      const users = dbUsers?.map(dbUserToUser) || []
+      // Don't load users from database - they will be populated by Clerk authentication
+      const users: User[] = []
 
       set({ tasks, columns, users, loading: false })
     } catch (error) {

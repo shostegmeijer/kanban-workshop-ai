@@ -8,6 +8,13 @@ const PresenceIndicator: React.FC = () => {
   const onlineUsers = users.filter(user => user.isOnline);
   const offlineUsers = users.filter(user => !user.isOnline);
 
+  // Show different text based on user count
+  const getPresenceText = () => {
+    if (onlineUsers.length === 0) return "No users online";
+    if (onlineUsers.length === 1) return "Just you";
+    return `${onlineUsers.length} online`;
+  };
+
   return (
     <div className="flex items-center gap-3">
       {/* Online users avatars */}
@@ -47,7 +54,7 @@ const PresenceIndicator: React.FC = () => {
       <div className="flex items-center gap-1 text-gray-600">
         <Users size={16} />
         <span className="text-sm font-medium">
-          {onlineUsers.length} online
+          {getPresenceText()}
         </span>
       </div>
 
